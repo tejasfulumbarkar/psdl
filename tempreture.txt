@@ -1,0 +1,83 @@
+#include <xc.h>
+#include <stdio.h>
+#include<pic18f4550.h>
+
+#define LCD_EN LATAbits.LA1
+#define LCD_RS LATAbits.LA0
+#define LCDPORT LATB
+
+unsigned char str[16];
+
+void lcd_delay(unsigned int time) {
+    unsigned int i, j;
+    for(i = 0; i < time; i++)
+        for(j = 0; j < 100; j++);
+}
+
+void sendInstruction(unsigned char command) {
+    LCD_RS = 0;
+    LCDPORT = command;
+    LCD_EN = 1;
+    lcd_delay(10);
+    LCD_EN = 0;
+    lcd_delay(10);
+}
+
+void sendData(unsigned char lcddata) {
+    LCD_RS = 1;
+    LCDPORT = lcddata;
+    LCD_EN = 1;
+    lcd_delay(10);
+    LCD_EN = 0;
+    lcd_delay(10);
+}
+
+void InitLCD(void) {
+    ADCON1 = 0x0F;
+    TRISB = 0x00;
+    TRISAbits.RA0 = 0;
+    TRISAbits.RA1 = 0;
+    sendInstruction(0x38);
+    sendInstruction(0x06);
+    sendInstruction(0x0C);
+    sendInstruction(0x01);
+    sendInstruction(0x80);
+}
+
+void LCD_display(unsigned int row, unsigned int POS, unsigned char* ch) {
+    if(row == 1)
+        sendInstruction(0x80 | POS - 1);
+    else
+        sendInstruction(0xC0 | POS - 1);
+    while(*ch)
+        sendData(*ch++);
+}
+
+void ADCInit(void) {
+    TRISEbits.RE2 = 1;
+    ADCON1 = 0b00000111;
+    ADCON2 = 0b10101110;
+}
+
+unsigned short Read_Temp(void) {
+    ADCON0 = 0b00011101; // Select channel for temperature sensor (AN1)
+    GODONE = 1;
+    while(GODONE == 1);  // Wait until conversion is complete
+    return ADRES;        // Return the ADC result
+}
+
+int main(void) {
+    unsigned int temp;
+    InitLCD();            // Call the InitLCD function
+    ADCInit();            // Initialize ADC
+    LCD_display(1, 1, "Temperature");  // Display "Temperature" on LCD
+
+    while(1) {
+        temp = Read_Temp();  // Read temperature value
+        temp = (temp * 500 / 1023);  // Convert ADC value to temperature in Celsius
+        sprintf(str, "%d/c", temp); // Format the temperature string
+        LCD_display(2, 1, str);  // Display temperature on LCD
+        lcd_delay(9000);  // Delay to allow for readability
+    }
+    return 0;
+}
