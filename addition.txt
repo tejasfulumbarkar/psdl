@@ -1,0 +1,14 @@
+#include<xc.h>
+void main(void)
+{
+    int i ,j,x;
+    TRISC=0;
+    LATC=0;
+    i=0x03;
+    j=0x02;
+    x=i+j;
+    PORTC=x;
+    PORTA=i;
+    PORTB=j;
+    return;
+}
